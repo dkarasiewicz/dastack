@@ -4,12 +4,19 @@ This document is the prescriptive companion to the [ADRs](./docs/adr/README.md).
 
 For specific recurring tasks, also see the project-scoped Claude Code skills in [`.claude/skills/`](./.claude/skills/README.md) — each is invocable as `/<skill-name>` and gets picked up automatically by Claude when the user's request matches. The skills are the operational surface for the recipes in this file.
 
-The stack has two flavors. Pick the one that fits the project:
+The stack has **two orthogonal axes**. Pick one option on each axis:
 
-- **Standard (GraphQL-first):** NestJS + Apollo GraphQL + Drizzle + RabbitMQ (self-hosted) or SNS+SQS (AWS) + LangChain/LangGraph for agents. Use for product backends that don't need external AI tool integration.
-- **AI-native (REST + MCP):** NestJS + REST controllers + MCP server (`@rekog/mcp-nest`) + Drizzle + Vercel AI SDK for the in-UI assistant. Use when external AI agents need to call your capabilities, or when an in-product assistant is the main UX.
+**API flavor:**
 
-Both flavors share the same Nx layout, file conventions, Facade pattern, Drizzle persistence, TDD setup, logging, config, and auth backbone. The differences are called out in the ADRs they affect (chiefly 0007 vs 0016/0017).
+- **Standard (GraphQL-first):** NestJS + Apollo GraphQL + class-validator inputs + REST escape hatch. Use for product backends that don't need external AI tool integration.
+- **AI-native (REST + MCP):** NestJS + REST controllers + MCP server (`@rekog/mcp-nest`) + Vercel AI SDK for the in-UI assistant. Use when external AI agents need to call your capabilities, or when an in-product assistant is the main UX.
+
+**Infra flavor:**
+
+- **Self-hosted / AWS-managed (default):** Postgres + Redis + RabbitMQ (or SNS+SQS) + BullMQ + Passport+OTP for auth. Docker Compose locally; SST + AWS in prod.
+- **Supabase-managed:** Supabase Auth + Realtime + Postgres + Storage + pgmq/pg_cron for queues. `supabase start` locally; a Supabase project in prod. See ADRs 0019–0023.
+
+Both flavors on both axes share the same Nx layout, file conventions, Facade pattern, Drizzle persistence, TDD setup, logging, config, `DomainEvent<T>` model, and frontend stack. The differences are called out in the ADRs they affect.
 
 **Before writing code**, read the project's `CONTEXT.md` if it exists (the Ubiquitous Language glossary — ADR-0018). Use its vocabulary in everything you produce. Flag conflicts with existing ADRs explicitly rather than silently overriding.
 
@@ -428,6 +435,11 @@ this.logger.log({ workspaceId, name }, `Created workspace "${name}"`);
 | [0013](./docs/adr/0013-session-based-auth-passport-otp.md) | Auth | Session + Passport + custom OTP |
 | [0014](./docs/adr/0014-frontend-stack-plus-multi-frontend.md) | Frontend | Next + Apollo + Tailwind/Radix + Zustand + RHF/zod |
 | [0015](./docs/adr/0015-nx-tag-based-boundary-enforcement.md) | Boundaries | Nx tags + `@nx/enforce-module-boundaries`: `scope:* / type:* / target:*` |
-| [0016](./docs/adr/0016-mcp-tools-as-first-class-providers.md) | External AI | MCP tools as `@Injectable` `@Tool()` classes with Zod params + per-call Actor authz |
+| [0016](./docs/adr/0016-mcp-tools-as-first-class-providers.md) | External AI | MCP tools as `@Injectable` `@Tool()` classes with Zod params + per-call user authz |
 | [0017](./docs/adr/0017-assistant-ui-with-ai-sdk.md) | In-UI AI | assistant-ui + Vercel AI SDK v6 + `streamText` with inline `tool({...})` |
 | [0018](./docs/adr/0018-ubiquitous-language-context-md.md) | DDD | `CONTEXT.md` glossary at repo root (or `CONTEXT-MAP.md` for multi-context) |
+| [0019](./docs/adr/0019-supabase-managed-backbone.md) | Supabase variant | Supabase as managed backbone (overview) — orthogonal to API flavor |
+| [0020](./docs/adr/0020-auth-via-supabase.md) | Auth (Supabase) | Supabase Auth + JWT verification replaces session+Passport+OTP |
+| [0021](./docs/adr/0021-realtime-via-supabase-broadcast.md) | Realtime (Supabase) | Broadcast for live-to-browser fan-out; NOT the backend event bus |
+| [0022](./docs/adr/0022-storage-via-supabase-storage.md) | Storage (Supabase) | Buckets + RLS + signed URLs; direct browser uploads by default |
+| [0023](./docs/adr/0023-jobs-via-pgmq-pg-cron.md) | Jobs (Supabase) | pgmq for queues, pg_cron for SQL schedules; replaces BullMQ + Redis |

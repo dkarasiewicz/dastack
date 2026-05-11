@@ -15,11 +15,13 @@ Initialize a new project from the architecture template in `node-example`. Outpu
 ## Inputs to confirm
 
 1. **Project name** (becomes the npm scope `@<project>/...`, the directory name, and the Nx workspace name).
-2. **Stack flavor**:
-   - **Standard:** NestJS + GraphQL + Drizzle + RabbitMQ + LangChain (if AI).
-   - **AI-native:** NestJS + REST + MCP server + Drizzle + Vercel AI SDK + assistant-ui.
-3. **Frontend count** — single Next.js app, or multiple?
-4. **Deploy target** — local/self-hosted (RabbitMQ + Docker Compose) or AWS (SST + SNS/SQS).
+2. **API flavor**:
+   - **Standard:** NestJS + GraphQL + Apollo.
+   - **AI-native:** NestJS + REST + MCP server + Vercel AI SDK + assistant-ui.
+3. **Infra flavor** (orthogonal to API flavor):
+   - **Self-hosted / AWS-managed:** docker-compose + RabbitMQ (local) or SST + SNS+SQS (AWS); BullMQ + Redis for jobs; Passport + custom OTP for auth.
+   - **Supabase:** Supabase Auth + Realtime + Postgres + Storage + pgmq/pg_cron for queues. See ADRs 0019–0023.
+4. **Frontend count** — single Next.js app, or multiple?
 5. **First bounded context to scaffold** (typically `auth` + one product context).
 
 ## Steps
@@ -58,18 +60,28 @@ Initialize a new project from the architecture template in `node-example`. Outpu
 5. **Install the canonical backend deps:**
 
    ```bash
-   # Core Nest
-   pnpm add @nestjs/config @nestjs/passport @nestjs/cache-manager @nestjs/schedule @nestjs/terminus
+   # Core Nest (both infra flavors)
+   pnpm add @nestjs/config @nestjs/cache-manager @nestjs/schedule @nestjs/terminus
    # Logging
    pnpm add nestjs-pino pino-pretty
    # Drizzle
    pnpm add drizzle-orm pg && pnpm add -D drizzle-kit @types/pg
-   # Redis & cache
-   pnpm add ioredis @keyv/redis connect-redis
-   # Auth & session
-   pnpm add express-session passport passport-custom bcrypt jsonwebtoken && pnpm add -D @types/passport @types/express-session @types/bcrypt @types/jsonwebtoken
    # Validation
    pnpm add class-validator class-transformer zod
+   ```
+
+   **Self-hosted / AWS-managed infra flavor — add:**
+   ```bash
+   pnpm add @nestjs/passport @nestjs/bullmq bullmq
+   pnpm add ioredis @keyv/redis connect-redis
+   pnpm add express-session passport passport-custom bcrypt jsonwebtoken
+   pnpm add -D @types/passport @types/express-session @types/bcrypt @types/jsonwebtoken
+   ```
+
+   **Supabase infra flavor — add:**
+   ```bash
+   pnpm add @supabase/supabase-js @supabase/ssr
+   # pgmq + pg_cron are Postgres extensions, no npm deps
    ```
 
 6. **Pick the API flavor and install accordingly:**
@@ -86,7 +98,7 @@ Initialize a new project from the architecture template in `node-example`. Outpu
 
 7. **Pick the event transport and install:**
 
-   **RabbitMQ (self-hosted):**
+   **RabbitMQ (self-hosted, default for the standard infra flavor):**
    ```bash
    pnpm add @golevelup/nestjs-rabbitmq amqplib amqp-connection-manager
    ```
@@ -95,6 +107,15 @@ Initialize a new project from the architecture template in `node-example`. Outpu
    ```bash
    pnpm add @aws-sdk/client-sns @aws-sdk/client-sqs && pnpm add -D sst
    ```
+
+   **pgmq (Supabase variant, Postgres-native):**
+   ```bash
+   # No npm deps. Enable extensions and create queues in a Supabase migration:
+   # create extension if not exists pgmq;
+   # create extension if not exists pg_cron;
+   # select pgmq.create('domain_events');
+   ```
+   See ADR-0023 and the `use-supabase-queues` skill.
 
 8. **Install frontend deps:**
 
@@ -116,7 +137,18 @@ Initialize a new project from the architecture template in `node-example`. Outpu
 
 11. **Scaffold the first bounded context** using the `scaffold-bounded-context` skill (typically `auth`).
 
-12. **Add `docker-compose.yml`** with Postgres, Redis, and (for RabbitMQ projects) RabbitMQ.
+12. **Set up the local infra stack:**
+
+    **Self-hosted / AWS-managed flavor** — add `docker-compose.yml` with Postgres, Redis, and (for RabbitMQ projects) RabbitMQ.
+
+    **Supabase flavor** — initialize Supabase CLI:
+    ```bash
+    pnpm add -D supabase
+    pnpm supabase init
+    pnpm supabase start  # boots Postgres, Auth, Realtime, Storage, Studio, Inbucket in Docker
+    pnpm supabase status # copy values into .env
+    ```
+    Use the `use-supabase-auth`, `use-supabase-storage`, and `use-supabase-queues` skills for the wiring.
 
 13. **Initialize Drizzle:**
 
@@ -159,7 +191,8 @@ Copy the rules block from ADR-0015. Tag every project at creation:
 - **DO** copy the entire `docs/adr/` directory and `AGENTS.md` and `.claude/skills/` from `node-example`. The new project starts on day 1 with the full template.
 - **DO** strip date stamps from copied ADRs if you want to re-date them for the new project (or leave them as the canonical decision date).
 - **DO** fill in `CONTEXT.md` early. Don't ship without at least the core 3-5 terms defined.
-- **DON'T** pick BOTH event transports. Choose one.
+- **DO** pick ONE API flavor (GraphQL OR REST+MCP) and ONE infra flavor (self-hosted/AWS OR Supabase). The two axes are independent, but each axis is a one-time choice.
+- **DON'T** pick multiple event transports. Choose one (Rabbit OR SNS+SQS OR pgmq).
 - **DON'T** skip the Nx tag rules. Untagged libs silently bypass boundary enforcement.
 - **DON'T** copy `MEMORY.md` or anything from `~/.claude/projects/`. Those are user-machine-specific.
 

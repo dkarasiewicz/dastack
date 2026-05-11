@@ -27,6 +27,14 @@ Project-scoped Claude Code skills derived from the ADRs and AGENTS.md in this re
 | [`add-mcp-tool`](./add-mcp-tool/SKILL.md) | Exposing a capability to external AI agents via MCP |
 | [`add-in-ui-assistant`](./add-in-ui-assistant/SKILL.md) | Wiring the in-product AI chat (assistant-ui + Vercel AI SDK) |
 
+## Supabase variant
+
+| Skill | Use when |
+|---|---|
+| [`use-supabase-auth`](./use-supabase-auth/SKILL.md) | Switching auth from Passport+OTP to Supabase Auth + JWT verification |
+| [`use-supabase-storage`](./use-supabase-storage/SKILL.md) | Adding file uploads / serving assets via Supabase Storage (with RLS) |
+| [`use-supabase-queues`](./use-supabase-queues/SKILL.md) | Using pgmq + pg_cron as a Postgres-native queue + scheduler |
+
 ## Governance
 
 | Skill | Use when |

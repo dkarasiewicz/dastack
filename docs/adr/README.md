@@ -26,6 +26,22 @@ Each ADR opens with a **TL;DR** for quick scanning, followed by the full Context
 | [0016](./0016-mcp-tools-as-first-class-providers.md) | MCP tools as first-class providers | Accepted |
 | [0017](./0017-assistant-ui-with-ai-sdk.md) | In-UI AI chat with assistant-ui + Vercel AI SDK v6 | Accepted |
 | [0018](./0018-ubiquitous-language-context-md.md) | Ubiquitous Language via CONTEXT.md | Accepted |
+| [0019](./0019-supabase-managed-backbone.md) | Supabase as managed infrastructure backbone | Accepted |
+| [0020](./0020-auth-via-supabase.md) | Auth via Supabase | Accepted |
+| [0021](./0021-realtime-via-supabase-broadcast.md) | Realtime via Supabase Broadcast | Accepted |
+| [0022](./0022-storage-via-supabase-storage.md) | Storage via Supabase Storage | Accepted |
+| [0023](./0023-jobs-via-pgmq-pg-cron.md) | Jobs queue via pgmq + pg_cron | Accepted |
+
+## Stack flavors
+
+The decision space is **two-dimensional**:
+
+| Axis | Options |
+|---|---|
+| **API flavor** | GraphQL-first (ADR-0007) **or** REST+MCP for AI-native projects (ADR-0016 + ADR-0017) |
+| **Infra flavor** | Self-hosted / AWS-managed (default, see ADRs 0006/0009/0013) **or** Supabase-managed (ADR-0019 and its sub-ADRs) |
+
+Both flavors share the same Nx layout, file conventions, Facade pattern, Drizzle persistence, TDD setup, `DomainEvent<T>` model, logging, and frontend stack. The differences are isolated to the ADRs above.
 
 For a prescriptive, code-first guide aimed at AI coding agents, see [`AGENTS.md`](../../AGENTS.md).
 
