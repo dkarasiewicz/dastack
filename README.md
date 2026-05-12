@@ -4,6 +4,7 @@ A starter set of architecture and code style docs for a new project. Use it as t
 
 ## Where to start
 
+- **[`templates/supabase/`](./templates/supabase/)** — the pre-built starter directory (Nx + Nest + Next + Drizzle + Supabase Auth/Realtime/Storage + pgmq queues, ready to copy). Bootstrap a new project with the [`bootstrap-from-template`](./.claude/skills/bootstrap-from-template/SKILL.md) skill, or copy + run [`scripts/init-template.sh`](./scripts/init-template.sh).
 - **[`AGENTS.md`](./AGENTS.md)** — prescriptive playbook for coding agents (human or AI). Code shapes, recipes, DO/DON'T. Start here when writing code.
 - **[`docs/adr/`](./docs/adr/README.md)** — Architecture Decision Records (TL;DR + classic Context / Decision / Consequences). Start here when changing how the system works.
 - **[`.claude/skills/`](./.claude/skills/README.md)** — task-scoped Claude Code skills (scaffold a context, add an event, wire an MCP tool, review architecture, etc.). Invocable as `/<skill-name>`.
