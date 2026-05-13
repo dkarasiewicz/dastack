@@ -9,6 +9,7 @@ export * from './lib/decorators/current-user.decorator';
 export * from './lib/decorators/is-public.decorator';
 export * from './lib/decorators/roles.decorator';
 export * from './lib/eventbus';
+export * from './lib/filters';
 export * from './lib/health/db.indicator';
 export * from './lib/health/health.controller';
 export * from './lib/queue';

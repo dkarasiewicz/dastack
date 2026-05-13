@@ -17,7 +17,7 @@ import {
   TEST_JWT_SECRET,
 } from '@appname/core-common/testing';
 import request from 'supertest';
-import { AppModule } from '../../../api/src/app/app.module';
+import { AppModule } from './app.module';
 
 // Integration test boots the real AppModule in-process and swaps every
 // external dependency (DB, Supabase admin client, event bus, queue) for a

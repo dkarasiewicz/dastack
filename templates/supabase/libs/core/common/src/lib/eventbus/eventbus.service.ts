@@ -42,7 +42,10 @@ export class EventBusService implements OnModuleInit, OnModuleDestroy {
   }
 
   async publish<T extends DomainEvent>(event: T): Promise<void> {
-    const errors = await validate(event as object);
+    // forbidUnknownValues=false lets undecorated events pass through. Opt in
+    // to validation per event by declaring class-validator decorators on the
+    // payload class plus @ValidateNested + @Type on the event's `payload` field.
+    const errors = await validate(event as object, { forbidUnknownValues: false });
     if (errors.length > 0) {
       this.logger.error(`Invalid event payload: ${JSON.stringify(errors)}`);
       throw new BadRequestException('Invalid event payload');
