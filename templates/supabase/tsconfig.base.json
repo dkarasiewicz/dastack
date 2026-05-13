@@ -15,6 +15,7 @@
     "skipDefaultLibCheck": true,
     "paths": {
       "@appname/core-common": ["./libs/core/common/src/index.ts"],
+      "@appname/core-common/testing": ["./libs/core/common/src/testing.ts"],
       "@appname/models": ["./libs/shared/isomorphic/models/src/index.ts"]
     }
   },

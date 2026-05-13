@@ -5,9 +5,12 @@ import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 import { McpModule, McpTransportType } from '@rekog/mcp-nest';
 import { CommonModule } from '@appname/core-common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { config, validate } from './configuration';
 
 @Module({
+  controllers: [AppController],
   imports: [
     LoggerModule.forRootAsync({
       useFactory: (configService: ConfigService) => ({
@@ -41,6 +44,7 @@ import { config, validate } from './configuration';
     CommonModule,
   ],
   providers: [
+    AppService,
     {
       provide: APP_PIPE,
       useValue: new ValidationPipe({
