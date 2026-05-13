@@ -1,70 +1,132 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@appname/ui/components/ui/button';
+import { Input } from '@appname/ui/components/ui/input';
 import { createClient } from '@/lib/supabase/browser';
 
+// Two-step email OTP flow:
+//   1. POST email -> Supabase sends a 6-digit code to the inbox.
+//   2. User pastes the code -> verifyOtp exchanges it for a session.
+//
+// Locally, the email lands in Inbucket at http://localhost:54324.
 export default function SignInPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [code, setCode] = useState('');
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus('sending');
+  async function handleSendCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setLoading(true);
+    setError('');
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const { error: err } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { shouldCreateUser: true },
     });
-    if (error) {
-      setStatus('error');
-      setErrorMessage(error.message);
-      return;
+    if (err) setError(err.message);
+    else setSent(true);
+    setLoading(false);
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setLoading(true);
+    setError('');
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: 'email',
+    });
+    if (err) {
+      setError(err.message);
+      setLoading(false);
+    } else {
+      router.push('/');
+      router.refresh();
     }
-    setStatus('sent');
   }
 
   return (
-    <main className="mx-auto mt-32 max-w-md p-6">
-      <h1 className="mb-2 text-2xl font-semibold">Sign in</h1>
-      <p className="mb-6 text-sm text-gray-600">
-        Enter your email to receive a magic link. Locally,
-        emails are captured by Inbucket at{' '}
-        <a href="http://localhost:54324" className="underline" target="_blank" rel="noreferrer">
-          http://localhost:54324
-        </a>
-        .
-      </p>
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <div className="w-full max-w-sm rounded-xl border bg-card p-8 shadow-sm flex flex-col gap-6">
+        <div className="flex flex-col gap-1 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+          {!sent && (
+            <p className="text-sm text-muted-foreground">
+              Enter your email to receive a one-time code.
+            </p>
+          )}
+        </div>
 
-      <form onSubmit={onSubmit} className="space-y-4">
-        <input
-          type="email"
-          required
-          autoFocus
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border border-gray-300 px-3 py-2"
-        />
-        <button
-          type="submit"
-          disabled={status === 'sending' || status === 'sent'}
-          className="w-full rounded bg-black px-4 py-2 text-white disabled:opacity-50"
-        >
-          {status === 'sending' ? 'Sending…' : status === 'sent' ? 'Check your inbox' : 'Send magic link'}
-        </button>
-      </form>
-
-      {status === 'sent' && (
-        <p className="mt-4 text-sm text-green-700">
-          Magic link sent. Open the email and click the link to finish signing in.
-        </p>
-      )}
-      {status === 'error' && (
-        <p className="mt-4 text-sm text-red-700">Error: {errorMessage}</p>
-      )}
-    </main>
+        {!sent ? (
+          <form onSubmit={handleSendCode} className="flex flex-col gap-3">
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoFocus
+              required
+            />
+            <Button type="submit" disabled={loading || !email.trim()}>
+              {loading ? 'Sending…' : 'Send code'}
+            </Button>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <p className="text-xs text-muted-foreground text-center">
+              Locally, emails appear in Inbucket at{' '}
+              <a
+                href="http://localhost:54324"
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
+                localhost:54324
+              </a>
+              .
+            </p>
+          </form>
+        ) : (
+          <form onSubmit={handleVerify} className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground text-center">
+              Enter the 6-digit code sent to{' '}
+              <strong className="text-foreground">{email}</strong>.
+            </p>
+            <Input
+              type="text"
+              inputMode="numeric"
+              placeholder="123456"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              autoFocus
+              required
+            />
+            <Button type="submit" disabled={loading || code.length < 6}>
+              {loading ? 'Verifying…' : 'Sign in'}
+            </Button>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <button
+              type="button"
+              className="text-sm text-muted-foreground underline self-center"
+              onClick={() => {
+                setSent(false);
+                setCode('');
+                setError('');
+              }}
+            >
+              Use a different email
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
   );
 }

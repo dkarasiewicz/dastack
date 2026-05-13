@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { Button } from '@appname/ui/components/ui/button';
 import { Dashboard } from '@/components/dashboard';
+import { createClient } from '@/lib/supabase/server';
 
 // Server Component: reads the current session via the server Supabase client.
 // Unauthenticated -> minimal landing with a sign-in link.
@@ -14,16 +15,13 @@ export default async function Index() {
   if (!user) {
     return (
       <main className="mx-auto mt-32 max-w-md p-6 text-center">
-        <h1 className="mb-2 text-3xl font-semibold">appname</h1>
-        <p className="mb-8 text-gray-600">
-          A Supabase + Nest + Next.js starter template. Sign in to see the dashboard demo.
+        <h1 className="mb-2 text-3xl font-semibold tracking-tight">appname</h1>
+        <p className="mb-8 text-muted-foreground">
+          A Supabase + Nest + Next.js starter. Sign in to see the dashboard demo.
         </p>
-        <Link
-          href="/auth/sign-in"
-          className="inline-block rounded bg-black px-6 py-2 text-white"
-        >
-          Sign in
-        </Link>
+        <Button asChild>
+          <Link href="/auth/sign-in">Sign in</Link>
+        </Button>
       </main>
     );
   }

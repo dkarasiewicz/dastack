@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { User } from '@supabase/supabase-js';
+import { Button } from '@appname/ui/components/ui/button';
 import { apiFetch, ApiError } from '@/lib/api/client';
 import { useRealtimeBroadcast } from '@/lib/realtime/use-realtime-channel';
 
@@ -11,8 +12,8 @@ interface MeResponse {
   role: string;
 }
 
-// Demo component shown to authenticated users. Three things wired:
-//   1. Calls GET /api/me through the typed API client (Bearer token attached
+// Demo dashboard shown to authenticated users. Three things wired:
+//   1. Calls GET /me through the typed API client (Bearer token attached
 //      from the Supabase session by `apiFetch`).
 //   2. Subscribes to a specific broadcast event on the domain-events channel.
 //   3. Renders a sign-out form pointed at /auth/sign-out.
@@ -44,25 +45,25 @@ export function Dashboard({ user }: { user: User }) {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Signed in</h1>
-          <p className="text-sm text-gray-600">{user.email}</p>
+          <p className="text-sm text-muted-foreground">{user.email}</p>
         </div>
         <form method="POST" action="/auth/sign-out">
-          <button className="rounded border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50">
+          <Button type="submit" variant="outline" size="sm">
             Sign out
-          </button>
+          </Button>
         </form>
       </header>
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">API: GET /me</h2>
-          <button onClick={callMe} className="rounded bg-black px-3 py-1 text-sm text-white">
+          <Button onClick={callMe} size="sm">
             Call API
-          </button>
+          </Button>
         </div>
-        {meError && <p className="text-sm text-red-700">{meError}</p>}
+        {meError && <p className="text-sm text-destructive">{meError}</p>}
         {me && (
-          <pre className="overflow-auto rounded bg-gray-100 p-3 text-xs">
+          <pre className="overflow-auto rounded-md border bg-muted/40 p-3 text-xs">
             {JSON.stringify(me, null, 2)}
           </pre>
         )}
@@ -72,17 +73,17 @@ export function Dashboard({ user }: { user: User }) {
         <h2 className="text-lg font-semibold">
           Realtime: {channelName || '(channel unset)'} / ExampleEvent
         </h2>
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-muted-foreground">
           Publish from the API via{' '}
-          <code className="rounded bg-gray-100 px-1">eventBusService.publish(...)</code>;
+          <code className="rounded bg-muted px-1">eventBusService.publish(...)</code>;
           matching events stream in below.
         </p>
         {events.length === 0 ? (
-          <p className="text-sm text-gray-500">No events received yet.</p>
+          <p className="text-sm text-muted-foreground">No events received yet.</p>
         ) : (
           <ul className="space-y-1">
             {events.map((event, i) => (
-              <li key={i} className="rounded bg-gray-100 p-2 text-xs">
+              <li key={i} className="rounded-md border bg-muted/40 p-2 text-xs">
                 <pre>{JSON.stringify(event, null, 2)}</pre>
               </li>
             ))}
