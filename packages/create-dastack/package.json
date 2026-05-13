@@ -1,0 +1,46 @@
+{
+  "name": "create-dastack",
+  "version": "0.1.0",
+  "description": "Scaffold a new project from the dastack Supabase template (Nx + Nest + Next + Drizzle + Supabase, ADRs and skills included).",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-dastack": "dist/cli.cjs"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "picocolors": "^1.1.1",
+    "tiged": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "tsup": "^8.3.0",
+    "typescript": "~5.9.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "create",
+    "scaffold",
+    "template",
+    "supabase",
+    "nestjs",
+    "nextjs",
+    "nx",
+    "drizzle"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dkarasiewicz/dastack.git",
+    "directory": "packages/create-dastack"
+  }
+}
