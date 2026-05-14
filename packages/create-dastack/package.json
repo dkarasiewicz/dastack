@@ -17,6 +17,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "commander": "^12.1.0",
     "picocolors": "^1.1.1",
     "tiged": "^2.12.7"
   },

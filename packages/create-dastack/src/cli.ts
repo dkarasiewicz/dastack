@@ -1,13 +1,13 @@
-import { execSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { copyFile, mkdir, rm } from 'node:fs/promises';
 import * as path from 'node:path';
+import { Command, InvalidArgumentError } from 'commander';
 import * as pc from 'picocolors';
 import tiged from 'tiged';
 import { initTemplate } from './init.js';
 
 interface Options {
-  projectName: string;
   install: boolean;
   git: boolean;
   ref: string;
@@ -23,15 +23,39 @@ const FETCHES: { from: string; to: string }[] = [
 
 const COPY_FILES = ['AGENTS.md', 'CONTEXT.md'];
 
-async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2));
-  const target = path.resolve(process.cwd(), options.projectName);
+const program = new Command();
+
+program
+  .name('create-dastack')
+  .description('Scaffold a new project from the dastack Supabase template.')
+  .argument('<project-name>', 'kebab-case project name (e.g. my-app)', parseProjectName)
+  .option('--no-install', `Skip ${pc.cyan('pnpm install')} after scaffolding.`)
+  .option('--no-git', `Skip ${pc.cyan('git init')} + initial commit.`)
+  .option('--ref <ref>', 'Branch, tag, or commit to fetch from.', 'main')
+  .addHelpText(
+    'after',
+    `
+${pc.bold('Examples:')}
+  $ pnpm create dastack my-app
+  $ pnpm create dastack my-app --no-install --ref some-branch
+`,
+  )
+  .action(async (projectName: string, options: Options) => {
+    await scaffold(projectName, options);
+  });
+
+program.parseAsync(process.argv).catch((err: unknown) => {
+  fail(err instanceof Error ? err.message : String(err));
+});
+
+async function scaffold(projectName: string, options: Options): Promise<void> {
+  const target = path.resolve(process.cwd(), projectName);
 
   if (existsSync(target)) {
-    fail(`Target directory ${pc.cyan(options.projectName)} already exists. Refusing to overwrite.`);
+    fail(`Target directory ${pc.cyan(projectName)} already exists. Refusing to overwrite.`);
   }
 
-  console.log(pc.bold(`Creating ${pc.cyan(options.projectName)} from ${pc.cyan(REPO)}@${options.ref}`));
+  console.log(pc.bold(`Creating ${pc.cyan(projectName)} from ${pc.cyan(REPO)}@${options.ref}`));
   await mkdir(target, { recursive: true });
 
   for (const { from, to } of FETCHES) {
@@ -45,8 +69,8 @@ async function main(): Promise<void> {
   console.log(`  ${pc.dim('→')} fetching ${pc.cyan('AGENTS.md, CONTEXT.md')}`);
   await fetch(`${REPO}#${options.ref}`, target, COPY_FILES);
 
-  console.log(`  ${pc.dim('→')} renaming ${pc.cyan('appname')} → ${pc.cyan(options.projectName)}`);
-  await initTemplate(target, options.projectName);
+  console.log(`  ${pc.dim('→')} renaming ${pc.cyan('appname')} → ${pc.cyan(projectName)}`);
+  await initTemplate(target, projectName);
 
   if (options.git) {
     console.log(`  ${pc.dim('→')} initializing git`);
@@ -64,7 +88,7 @@ async function main(): Promise<void> {
   console.log(pc.green('✓ Done.'));
   console.log();
   console.log(`Next steps:`);
-  console.log(`  cd ${pc.cyan(options.projectName)}`);
+  console.log(`  cd ${pc.cyan(projectName)}`);
   if (!options.install) console.log(`  pnpm install`);
   console.log(`  pnpm supabase start            ${pc.dim('# boots Postgres / Auth / Realtime / Storage / Studio locally')}`);
   console.log(`  pnpm supabase status           ${pc.dim('# values for .env')}`);
@@ -75,11 +99,6 @@ async function main(): Promise<void> {
 }
 
 async function fetch(source: string, dest: string, files?: string[]): Promise<void> {
-  const emitter = tiged(source, {
-    cache: false,
-    force: true,
-    verbose: false,
-  });
   if (files && files.length > 0) {
     // tiged doesn't have a built-in "only these files" option; clone the
     // root to a tmp dir then copy the requested files over.
@@ -90,14 +109,14 @@ async function fetch(source: string, dest: string, files?: string[]): Promise<vo
         const src = path.join(tmp, file);
         const dst = path.join(dest, file);
         if (existsSync(src)) {
-          await import('node:fs/promises').then(({ copyFile }) => copyFile(src, dst));
+          await copyFile(src, dst);
         }
       }),
     );
-    await import('node:fs/promises').then(({ rm }) => rm(tmp, { recursive: true, force: true }));
+    await rm(tmp, { recursive: true, force: true });
     return;
   }
-  await emitter.clone(dest);
+  await tiged(source, { cache: false, force: true, verbose: false }).clone(dest);
 }
 
 function run(cmd: string, args: string[], cwd: string): void {
@@ -107,71 +126,19 @@ function run(cmd: string, args: string[], cwd: string): void {
   }
 }
 
-function parseArgs(argv: string[]): Options {
-  const options: Partial<Options> = { install: true, git: true, ref: 'main' };
-  const positionals: string[] = [];
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i]!;
-    switch (arg) {
-      case '--no-install':
-        options.install = false;
-        break;
-      case '--no-git':
-        options.git = false;
-        break;
-      case '--ref':
-        options.ref = argv[++i] ?? 'main';
-        break;
-      case '-h':
-      case '--help':
-        printHelp();
-        process.exit(0);
-      // eslint-disable-next-line no-fallthrough
-      default:
-        if (arg.startsWith('-')) fail(`Unknown flag: ${arg}`);
-        positionals.push(arg);
-    }
+function parseProjectName(value: string): string {
+  if (!/^[a-z][a-z0-9-]*$/.test(value)) {
+    throw new InvalidArgumentError(
+      `Project name must be lowercase kebab-case (e.g. my-app). Got: ${value}`,
+    );
   }
-
-  const projectName = positionals[0];
-  if (!projectName) {
-    printHelp();
-    process.exit(1);
+  if (value === 'appname') {
+    throw new InvalidArgumentError(`'appname' is the placeholder itself — pick a different name.`);
   }
-  if (!/^[a-z][a-z0-9-]*$/.test(projectName)) {
-    fail(`Project name must be lowercase kebab-case (e.g. my-app). Got: ${projectName}`);
-  }
-  if (projectName === 'appname') {
-    fail(`'appname' is the placeholder itself — pick a different name.`);
-  }
-
-  return { ...options, projectName } as Options;
-}
-
-function printHelp(): void {
-  console.log(`
-${pc.bold('create-dastack')} — scaffold a new project from the dastack Supabase template.
-
-${pc.bold('Usage:')}
-  pnpm create dastack <project-name> [flags]
-
-${pc.bold('Flags:')}
-  --no-install    Skip ${pc.cyan('pnpm install')} after scaffolding.
-  --no-git        Skip ${pc.cyan('git init')} + initial commit.
-  --ref <ref>     Branch, tag, or commit to fetch from (default: main).
-  -h, --help      Show this help.
-
-${pc.bold('Example:')}
-  pnpm create dastack my-app
-  pnpm create dastack my-app --no-install --ref some-branch
-`);
+  return value;
 }
 
 function fail(msg: string): never {
   console.error(pc.red('error: ') + msg);
   process.exit(1);
 }
-
-main().catch((err: unknown) => {
-  fail(err instanceof Error ? err.message : String(err));
-});
