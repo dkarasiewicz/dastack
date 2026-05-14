@@ -1,14 +1,32 @@
-# Architecture and code style
+# dastack
 
-A starter set of architecture and code style docs for a new project. Use it as the seed when scaffolding a new Nx monorepo with a NestJS backend and a Next.js frontend.
+A starter set of architecture decisions, a prescriptive coding playbook, a Supabase-flavored Nx monorepo template, and Claude Code skills — everything needed to spin up a new product on day 1.
 
-## Where to start
+## Get started in one command
 
-- **[`templates/supabase/`](./templates/supabase/)** — the pre-built starter directory (Nx + Nest + Next + Drizzle + Supabase Auth/Realtime/Storage + pgmq queues, ready to copy). Bootstrap a new project with the [`bootstrap-from-template`](./.claude/skills/bootstrap-from-template/SKILL.md) skill, or copy + run [`scripts/init-template.sh`](./scripts/init-template.sh).
+```bash
+pnpm create dastack my-app
+```
+
+Or with `npm` / `yarn`:
+
+```bash
+npm create dastack@latest my-app
+yarn create dastack my-app
+```
+
+The CLI fetches `templates/supabase/`, `docs/adr/`, `.claude/skills/`, `AGENTS.md`, and `CONTEXT.md` into `./my-app`, renames the `appname` placeholder, runs `git init` + `pnpm install`, and prints the next steps. See [`packages/create-dastack`](./packages/create-dastack/README.md) for flags and details.
+
+## What's in this repo
+
+- **[`packages/create-dastack/`](./packages/create-dastack/)** — the `pnpm create dastack` CLI (one-command project bootstrap).
+- **[`templates/supabase/`](./templates/supabase/)** — the pre-built starter directory (Nx + Nest + Next + Drizzle + Supabase Auth/Realtime/Storage + pgmq queues + shadcn UI lib + OTP login, ready to copy). Manual bootstrap: copy + run [`scripts/init-template.sh`](./scripts/init-template.sh).
 - **[`AGENTS.md`](./AGENTS.md)** — prescriptive playbook for coding agents (human or AI). Code shapes, recipes, DO/DON'T. Start here when writing code.
 - **[`docs/adr/`](./docs/adr/README.md)** — Architecture Decision Records (TL;DR + classic Context / Decision / Consequences). Start here when changing how the system works.
 - **[`.claude/skills/`](./.claude/skills/README.md)** — task-scoped Claude Code skills (scaffold a context, add an event, wire an MCP tool, review architecture, etc.). Invocable as `/<skill-name>`.
 - **[`CONTEXT.md`](./CONTEXT.md)** — Ubiquitous Language template. Fill in with the project's own domain terms. See ADR-0018.
+
+All four are copied into a new project by `pnpm create dastack` automatically.
 
 ## The system in one paragraph
 
