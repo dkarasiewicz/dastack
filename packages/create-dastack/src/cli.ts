@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, rm } from 'node:fs/promises';
 import * as path from 'node:path';
+import { cancel, intro, log, note, outro, spinner } from '@clack/prompts';
 import { Command, InvalidArgumentError } from 'commander';
 import * as pc from 'picocolors';
 import tiged from 'tiged';
@@ -51,51 +52,69 @@ program.parseAsync(process.argv).catch((err: unknown) => {
 async function scaffold(projectName: string, options: Options): Promise<void> {
   const target = path.resolve(process.cwd(), projectName);
 
+  intro(pc.bgCyan(pc.black(' create-dastack ')));
+
   if (existsSync(target)) {
     fail(`Target directory ${pc.cyan(projectName)} already exists. Refusing to overwrite.`);
   }
 
-  console.log(pc.bold(`Creating ${pc.cyan(projectName)} from ${pc.cyan(REPO)}@${options.ref}`));
+  log.message(`${pc.dim('repo:')} ${pc.cyan(REPO)} ${pc.dim('@')} ${pc.cyan(options.ref)}`);
+  log.message(`${pc.dim('into:')} ${pc.cyan(`./${projectName}`)}`);
   await mkdir(target, { recursive: true });
 
   for (const { from, to } of FETCHES) {
-    const dest = path.join(target, to);
-    console.log(`  ${pc.dim('→')} fetching ${pc.cyan(`${REPO}/${from}`)}`);
-    await fetch(`${REPO}/${from}#${options.ref}`, dest);
+    const s = spinner();
+    s.start(`Fetching ${pc.cyan(`${REPO}/${from}`)}`);
+    try {
+      await fetch(`${REPO}/${from}#${options.ref}`, path.join(target, to));
+      s.stop(`Fetched  ${pc.cyan(`${REPO}/${from}`)}`);
+    } catch (err) {
+      s.stop(`Failed to fetch ${pc.cyan(`${REPO}/${from}`)}`, 1);
+      throw err;
+    }
   }
 
   // AGENTS.md / CONTEXT.md live at the repo root — fetch the root, but pick
   // only the two files we care about via tiged's `files` option.
-  console.log(`  ${pc.dim('→')} fetching ${pc.cyan('AGENTS.md, CONTEXT.md')}`);
+  const sFiles = spinner();
+  sFiles.start(`Fetching ${pc.cyan(COPY_FILES.join(', '))}`);
   await fetch(`${REPO}#${options.ref}`, target, COPY_FILES);
+  sFiles.stop(`Fetched  ${pc.cyan(COPY_FILES.join(', '))}`);
 
-  console.log(`  ${pc.dim('→')} renaming ${pc.cyan('appname')} → ${pc.cyan(projectName)}`);
+  const sRename = spinner();
+  sRename.start(`Renaming ${pc.cyan('appname')} → ${pc.cyan(projectName)}`);
   await initTemplate(target, projectName);
+  sRename.stop(`Renamed  ${pc.cyan('appname')} → ${pc.cyan(projectName)}`);
 
   if (options.git) {
-    console.log(`  ${pc.dim('→')} initializing git`);
+    const s = spinner();
+    s.start('Initializing git');
     run('git', ['init', '-q'], target);
     run('git', ['add', '-A'], target);
     run('git', ['commit', '-q', '-m', 'chore: bootstrap from dastack'], target);
+    s.stop('Initialized git');
   }
 
   if (options.install) {
-    console.log(`  ${pc.dim('→')} running ${pc.cyan('pnpm install')}`);
-    run('pnpm', ['install'], target);
+    const s = spinner();
+    s.start(`Running ${pc.cyan('pnpm install')}`);
+    run('pnpm', ['install'], target, true);
+    s.stop(`Installed dependencies`);
   }
 
-  console.log();
-  console.log(pc.green('✓ Done.'));
-  console.log();
-  console.log(`Next steps:`);
-  console.log(`  cd ${pc.cyan(projectName)}`);
-  if (!options.install) console.log(`  pnpm install`);
-  console.log(`  pnpm supabase start            ${pc.dim('# boots Postgres / Auth / Realtime / Storage / Studio locally')}`);
-  console.log(`  pnpm supabase status           ${pc.dim('# values for .env')}`);
-  console.log(`  cp .env.example .env && $EDITOR .env`);
-  console.log(`  pnpm nx run api:migrate-run`);
-  console.log(`  pnpm nx serve api              ${pc.dim('# backend on http://localhost:3000')}`);
-  console.log(`  pnpm nx serve ui               ${pc.dim('# frontend on http://localhost:4200 (other terminal)')}`);
+  const steps = [
+    `cd ${pc.cyan(projectName)}`,
+    ...(!options.install ? [`pnpm install`] : []),
+    `pnpm supabase start            ${pc.dim('# Postgres / Auth / Realtime / Storage / Studio')}`,
+    `pnpm supabase status           ${pc.dim('# values for .env')}`,
+    `cp .env.example .env && $EDITOR .env`,
+    `pnpm nx run api:migrate-run`,
+    `pnpm nx serve api              ${pc.dim('# http://localhost:3000')}`,
+    `pnpm nx serve ui               ${pc.dim('# http://localhost:4200')}`,
+  ];
+  note(steps.join('\n'), 'Next steps');
+
+  outro(pc.green(`✓ ${pc.bold(projectName)} ready.`));
 }
 
 async function fetch(source: string, dest: string, files?: string[]): Promise<void> {
@@ -119,8 +138,11 @@ async function fetch(source: string, dest: string, files?: string[]): Promise<vo
   await tiged(source, { cache: false, force: true, verbose: false }).clone(dest);
 }
 
-function run(cmd: string, args: string[], cwd: string): void {
-  const result = spawnSync(cmd, args, { cwd, stdio: 'inherit' });
+function run(cmd: string, args: string[], cwd: string, quiet = false): void {
+  const result = spawnSync(cmd, args, {
+    cwd,
+    stdio: quiet ? ['ignore', 'ignore', 'inherit'] : 'inherit',
+  });
   if (result.status !== 0) {
     fail(`${cmd} ${args.join(' ')} failed with code ${result.status}`);
   }
@@ -139,6 +161,6 @@ function parseProjectName(value: string): string {
 }
 
 function fail(msg: string): never {
-  console.error(pc.red('error: ') + msg);
+  cancel(msg);
   process.exit(1);
 }
